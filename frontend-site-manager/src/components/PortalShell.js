@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Login from './Login';
 import { api } from '../utils/api';
 
@@ -9,6 +9,7 @@ export default function PortalShell({ role, children, activeTab, setActiveTab, t
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const notificationRef = useRef(null);
 
   useEffect(() => {
     // Check auth
@@ -24,6 +25,19 @@ export default function PortalShell({ role, children, activeTab, setActiveTab, t
     }
     setCheckingAuth(false);
   }, []);
+
+  useEffect(() => {
+    if (!showNotifications) return;
+
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
 
   const fetchNotifications = async () => {
     try {
@@ -140,7 +154,7 @@ export default function PortalShell({ role, children, activeTab, setActiveTab, t
           
           <div className="header-actions">
             {/* Notification Bell */}
-            <div className="notification-bell-container">
+            <div className="notification-bell-container" ref={notificationRef}>
               <button 
                 className="btn-icon" 
                 onClick={() => {
@@ -205,16 +219,17 @@ export default function PortalShell({ role, children, activeTab, setActiveTab, t
           flex-grow: 1;
           display: flex;
           flex-direction: column;
-          height: 100vh;
-          overflow: hidden;
+          height: auto;
+          min-height: 0;
+          overflow: visible;
         }
 
         .header {
-          height: 70px;
+          height: 56px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 40px;
+          padding: 0 16px;
           border-bottom: 1px solid hsl(var(--border));
           z-index: 100;
           flex-shrink: 0;
@@ -268,10 +283,13 @@ export default function PortalShell({ role, children, activeTab, setActiveTab, t
         }
 
         .notifications-dropdown {
-          position: absolute;
-          top: 55px;
-          right: 0;
-          width: 320px;
+          position: fixed;
+          top: 64px;
+          right: 12px;
+          left: 12px;
+          width: auto;
+          max-height: calc(100dvh - 76px);
+          overflow-y: auto;
           z-index: 1000;
           padding: 15px;
           border-radius: var(--radius);
@@ -355,6 +373,7 @@ export default function PortalShell({ role, children, activeTab, setActiveTab, t
         }
 
         .welcome-text {
+          display: none;
           font-size: 0.9rem;
         }
 
@@ -479,6 +498,31 @@ export default function PortalShell({ role, children, activeTab, setActiveTab, t
 
         .btn-logout:hover {
           color: hsl(var(--destructive));
+        }
+
+        @media (min-width: 769px) {
+          .main-wrapper {
+            height: 100vh;
+            overflow: hidden;
+          }
+
+          .header {
+            height: 70px;
+            padding: 0 40px;
+          }
+
+          .notifications-dropdown {
+            position: absolute;
+            top: 55px;
+            right: 0;
+            left: auto;
+            width: 320px;
+            max-height: 400px;
+          }
+
+          .welcome-text {
+            display: inline;
+          }
         }
       `}</style>
     </div>

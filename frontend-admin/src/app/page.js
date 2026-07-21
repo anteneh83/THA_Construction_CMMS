@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import PortalShell from '../components/PortalShell';
 import { api } from '../utils/api';
 
@@ -16,11 +15,6 @@ export default function AdminPage() {
   const [sparePartRequests, setSparePartRequests] = useState([]);
   const [handoverValidations, setHandoverValidations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Search & Filter states for all tabs
   const [searchCar, setSearchCar] = useState('');
@@ -731,6 +725,94 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {/* Car CRUD Modal */}
+              {showCarModal && (
+                <div className="modal-overlay">
+                  <form onSubmit={handleCarSubmit} className="glass-card modal-content">
+                    <div className="modal-header">
+                      <h3>{selectedCar ? 'Edit Machinery Details' : 'Add New Heavy Machinery'}</h3>
+                      <button type="button" className="btn-close" onClick={() => setShowCarModal(false)}>×</button>
+                    </div>
+                    
+                    <div className="form-group">
+                      <label className="form-label">Machinery Name</label>
+                      <input type="text" className="form-input" required value={carForm.name} onChange={(e) => setCarForm({ ...carForm, name: e.target.value })} placeholder="e.g. Caterpillar 320 Excavator" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Plate / Asset Number</label>
+                      <input type="text" className="form-input" required value={carForm.plateNumber} onChange={(e) => setCarForm({ ...carForm, plateNumber: e.target.value })} placeholder="e.g. THA-EX-004" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Machinery Type</label>
+                      <input type="text" className="form-input" required value={carForm.type} onChange={(e) => setCarForm({ ...carForm, type: e.target.value })} placeholder="e.g. Excavator / Loader" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Brand</label>
+                      <input type="text" className="form-input" value={carForm.brand} onChange={(e) => setCarForm({ ...carForm, brand: e.target.value })} placeholder="e.g. Caterpillar" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Model</label>
+                      <input type="text" className="form-input" value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="e.g. 320D" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Manufacturing Year</label>
+                      <input type="number" className="form-input" value={carForm.manufacturingYear} onChange={(e) => setCarForm({ ...carForm, manufacturingYear: e.target.value })} placeholder="e.g. 2021" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Engine Number</label>
+                      <input type="text" className="form-input" value={carForm.engineNumber} onChange={(e) => setCarForm({ ...carForm, engineNumber: e.target.value })} placeholder="e.g. ENG-928472" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Chassis Number</label>
+                      <input type="text" className="form-input" value={carForm.chassisNumber} onChange={(e) => setCarForm({ ...carForm, chassisNumber: e.target.value })} placeholder="e.g. CHA-88123-B" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Current Mileage (km / hours)</label>
+                      <input type="number" className="form-input" value={carForm.currentMileage} onChange={(e) => setCarForm({ ...carForm, currentMileage: e.target.value })} placeholder="e.g. 45000" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Assigned Site / Project Location</label>
+                      <input type="text" className="form-input" value={carForm.assignedSite} onChange={(e) => setCarForm({ ...carForm, assignedSite: e.target.value })} placeholder="e.g. Bole Airport Expansion" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Assigned Driver</label>
+                      <select className="form-input" value={carForm.assignedDriver} onChange={(e) => setCarForm({ ...carForm, assignedDriver: e.target.value })}>
+                        <option value="">-- Select Driver --</option>
+                        {users.filter(u => u.role === 'Driver').map(u => (
+                          <option key={u._id} value={u._id}>{u.fullName || u.username}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Status</label>
+                      <select className="form-input" value={carForm.status} onChange={(e) => setCarForm({ ...carForm, status: e.target.value })}>
+                        <option value="Active">Active</option>
+                        <option value="Under Maintenance">Under Maintenance</option>
+                        <option value="Waiting for Spare Part">Waiting for Spare Part</option>
+                        <option value="Out of Service">Out of Service</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Machinery Photo</label>
+                      <input type="file" className="form-input" onChange={(e) => setCarPhoto(e.target.files[0])} />
+                    </div>
+
+                    <button type="submit" className="btn btn-primary">{selectedCar ? 'Save Changes' : 'Create Machinery'}</button>
+                  </form>
+                </div>
+              )}
             </div>
           )}
 
@@ -796,6 +878,69 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {/* User CRUD Modal */}
+              {showUserModal && (
+                <div className="modal-overlay">
+                  <form onSubmit={handleUserSubmit} className="glass-card modal-content">
+                    <div className="modal-header">
+                      <h3>{selectedUser ? 'Edit Team Member' : 'Provision New Account'}</h3>
+                      <button type="button" className="btn-close" onClick={() => setShowUserModal(false)}>×</button>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Full Name</label>
+                      <input type="text" className="form-input" required value={userForm.fullName} onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })} placeholder="e.g. Abebe Balcha" />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Username (Login ID)</label>
+                      <input type="text" className="form-input" required disabled={!!selectedUser} value={userForm.username} onChange={(e) => setUserForm({ ...userForm, username: e.target.value })} placeholder="e.g. abebe_b" />
+                    </div>
+
+                    {!selectedUser && (
+                      <div className="form-group">
+                        <label className="form-label">Initial Password</label>
+                        <input type="password" className="form-input" required value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} placeholder="Temporary password" />
+                      </div>
+                    )}
+
+                    {selectedUser && (
+                      <div className="form-group">
+                        <label className="form-label">Reset Password (Optional)</label>
+                        <input type="password" className="form-input" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} placeholder="Leave blank to keep same" />
+                      </div>
+                    )}
+
+                    <div className="form-group">
+                      <label className="form-label">Role</label>
+                      <select className="form-input" required value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}>
+                        <option value="Driver">Driver</option>
+                        <option value="SiteManager">Site Manager</option>
+                        <option value="Accountant">Accountant</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Phone Number</label>
+                      <input type="text" className="form-input" value={userForm.phone} onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })} placeholder="e.g. +251..." />
+                    </div>
+
+                    {userForm.role === 'Driver' && (
+                      <div className="form-group">
+                        <label className="form-label">Assign Machinery</label>
+                        <select className="form-input" value={userForm.assignedCar} onChange={(e) => setUserForm({ ...userForm, assignedCar: e.target.value })}>
+                          <option value="">-- Select Machinery --</option>
+                          {cars.map(c => (
+                            <option key={c._id} value={c._id}>{c.name} ({c.plateNumber})</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <button type="submit" className="btn btn-primary">{selectedUser ? 'Save Details' : 'Provision User'}</button>
+                  </form>
+                </div>
+              )}
             </div>
           )}
 
@@ -1576,159 +1721,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {mounted && showCarModal && createPortal(
-        <div className="modal-overlay modal-overlay-form">
-          <form onSubmit={handleCarSubmit} className="glass-card modal-content modal-content-form">
-            <div className="modal-header">
-              <h3>{selectedCar ? 'Edit Machinery Details' : 'Add New Heavy Machinery'}</h3>
-              <button type="button" className="btn-close" onClick={() => setShowCarModal(false)}>×</button>
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Machinery Name</label>
-              <input type="text" className="form-input" required value={carForm.name} onChange={(e) => setCarForm({ ...carForm, name: e.target.value })} placeholder="e.g. Caterpillar 320 Excavator" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Plate / Asset Number</label>
-              <input type="text" className="form-input" required value={carForm.plateNumber} onChange={(e) => setCarForm({ ...carForm, plateNumber: e.target.value })} placeholder="e.g. THA-EX-004" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Machinery Type</label>
-              <input type="text" className="form-input" required value={carForm.type} onChange={(e) => setCarForm({ ...carForm, type: e.target.value })} placeholder="e.g. Excavator / Loader" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Brand</label>
-              <input type="text" className="form-input" value={carForm.brand} onChange={(e) => setCarForm({ ...carForm, brand: e.target.value })} placeholder="e.g. Caterpillar" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Model</label>
-              <input type="text" className="form-input" value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="e.g. 320D" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Manufacturing Year</label>
-              <input type="number" className="form-input" value={carForm.manufacturingYear} onChange={(e) => setCarForm({ ...carForm, manufacturingYear: e.target.value })} placeholder="e.g. 2021" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Engine Number</label>
-              <input type="text" className="form-input" value={carForm.engineNumber} onChange={(e) => setCarForm({ ...carForm, engineNumber: e.target.value })} placeholder="e.g. ENG-928472" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Chassis Number</label>
-              <input type="text" className="form-input" value={carForm.chassisNumber} onChange={(e) => setCarForm({ ...carForm, chassisNumber: e.target.value })} placeholder="e.g. CHA-88123-B" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Current Mileage (km / hours)</label>
-              <input type="number" className="form-input" value={carForm.currentMileage} onChange={(e) => setCarForm({ ...carForm, currentMileage: e.target.value })} placeholder="e.g. 45000" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Assigned Site / Project Location</label>
-              <input type="text" className="form-input" value={carForm.assignedSite} onChange={(e) => setCarForm({ ...carForm, assignedSite: e.target.value })} placeholder="e.g. Bole Airport Expansion" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Assigned Driver</label>
-              <select className="form-input" value={carForm.assignedDriver} onChange={(e) => setCarForm({ ...carForm, assignedDriver: e.target.value })}>
-                <option value="">-- Select Driver --</option>
-                {users.filter(u => u.role === 'Driver').map(u => (
-                  <option key={u._id} value={u._id}>{u.fullName || u.username}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Status</label>
-              <select className="form-input" value={carForm.status} onChange={(e) => setCarForm({ ...carForm, status: e.target.value })}>
-                <option value="Active">Active</option>
-                <option value="Under Maintenance">Under Maintenance</option>
-                <option value="Waiting for Spare Part">Waiting for Spare Part</option>
-                <option value="Out of Service">Out of Service</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Machinery Photo</label>
-              <input type="file" className="form-input" onChange={(e) => setCarPhoto(e.target.files[0])} />
-            </div>
-
-            <button type="submit" className="btn btn-primary">{selectedCar ? 'Save Changes' : 'Create Machinery'}</button>
-          </form>
-        </div>,
-        document.body
-      )}
-
-      {mounted && showUserModal && createPortal(
-        <div className="modal-overlay modal-overlay-form">
-          <form onSubmit={handleUserSubmit} className="glass-card modal-content modal-content-form">
-            <div className="modal-header">
-              <h3>{selectedUser ? 'Edit Team Member' : 'Provision New Account'}</h3>
-              <button type="button" className="btn-close" onClick={() => setShowUserModal(false)}>×</button>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <input type="text" className="form-input" required value={userForm.fullName} onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })} placeholder="e.g. Abebe Balcha" />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Username (Login ID)</label>
-              <input type="text" className="form-input" required disabled={!!selectedUser} value={userForm.username} onChange={(e) => setUserForm({ ...userForm, username: e.target.value })} placeholder="e.g. abebe_b" />
-            </div>
-
-            {!selectedUser && (
-              <div className="form-group">
-                <label className="form-label">Initial Password</label>
-                <input type="password" className="form-input" required value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} placeholder="Temporary password" />
-              </div>
-            )}
-
-            {selectedUser && (
-              <div className="form-group">
-                <label className="form-label">Reset Password (Optional)</label>
-                <input type="password" className="form-input" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} placeholder="Leave blank to keep same" />
-              </div>
-            )}
-
-            <div className="form-group">
-              <label className="form-label">Role</label>
-              <select className="form-input" required value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}>
-                <option value="Driver">Driver</option>
-                <option value="SiteManager">Site Manager</option>
-                <option value="Accountant">Accountant</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Phone Number</label>
-              <input type="text" className="form-input" value={userForm.phone} onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })} placeholder="e.g. +251..." />
-            </div>
-
-            {userForm.role === 'Driver' && (
-              <div className="form-group">
-                <label className="form-label">Assign Machinery</label>
-                <select className="form-input" value={userForm.assignedCar} onChange={(e) => setUserForm({ ...userForm, assignedCar: e.target.value })}>
-                  <option value="">-- Select Machinery --</option>
-                  {cars.map(c => (
-                    <option key={c._id} value={c._id}>{c.name} ({c.plateNumber})</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <button type="submit" className="btn btn-primary">{selectedUser ? 'Save Details' : 'Provision User'}</button>
-          </form>
-        </div>,
-        document.body
-      )}
-
       {/* Styled JSX (Global overrides for modular dashboard views) */}
       <style jsx>{`
         .tab-viewport {
@@ -1906,28 +1898,12 @@ export default function AdminPage() {
           overflow-y: auto;
         }
 
-        .modal-overlay-form {
-          align-items: center;
-          padding: 24px 20px;
-        }
-
         .modal-content {
           width: 100%;
           max-width: 500px;
           padding: 30px;
           margin-top: 20px;
           margin-bottom: 40px;
-        }
-
-        .modal-content-form {
-          max-height: calc(100dvh - 48px);
-          margin: auto;
-          overflow-y: auto;
-          flex-shrink: 0;
-        }
-
-        .modal-content-form:hover {
-          transform: none;
         }
 
         .modal-content.wide {
