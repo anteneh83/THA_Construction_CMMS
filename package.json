@@ -1,0 +1,24 @@
+{
+  "name": "cmms-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend-admin",
+    "frontend-driver",
+    "frontend-site-manager",
+    "frontend-accountant"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:admin": "npm run dev --workspace=frontend-admin -- --port 3000",
+    "dev:driver": "npm run dev --workspace=frontend-driver -- --port 3001",
+    "dev:site-manager": "npm run dev --workspace=frontend-site-manager -- --port 3002",
+    "dev:accountant": "npm run dev --workspace=frontend-accountant -- --port 3003",
+    "dev:all": "npx concurrently \"npm run dev:backend\" \"npm run dev:admin\" \"npm run dev:driver\" \"npm run dev:site-manager\" \"npm run dev:accountant\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
