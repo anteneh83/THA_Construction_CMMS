@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import PortalShell from '../components/PortalShell';
 import { api } from '../utils/api';
+import { uploadImageToCloudinary } from '../utils/cloudinary';
 
 export default function DriverPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -26,36 +27,28 @@ export default function DriverPage() {
   const [submittingVerify, setSubmittingVerify] = useState(false);
 
   useEffect(() => {
-    const currentUser = api.getCurrentUser();
-    setUser(currentUser);
-    fetchData();
-  }, [activeTab]);
+    fetchInitialData();
+  }, []);
 
-  const fetchData = async () => {
+  const fetchInitialData = async () => {
     setLoading(true);
     try {
-      // Get driver profile details (includes assigned machinery)
-      const profileRes = await api.get('/auth/me');
-      if (profileRes.success) {
-        setAssignedCar(profileRes.user.assignedCar);
-      }
-
-      if (activeTab === 'dashboard' || activeTab === 'reports') {
-        const res = await api.get('/issue-reports');
-        if (res.success) setMyReports(res.reports);
-      }
-
-      if (activeTab === 'verify') {
-        // Fetch cases associated with their machinery that are open/in progress
-        const res = await api.get('/issue-cases');
-        if (res.success) {
-          const driverCarId = profileRes.user.assignedCar?._id;
-          const activeCases = res.issueCases.filter(c => 
-            c.car?._id === driverCarId && 
-            (c.matchStatus === 'Matched' || c.matchStatus === 'Pending')
-          );
-          setPendingVerifications(activeCases);
+      const meRes = await api.get('/users/me');
+      if (meRes.success) {
+        setUser(meRes.user);
+        if (meRes.user.assignedCar) {
+          setAssignedCar(meRes.user.assignedCar);
         }
+      }
+
+      const repRes = await api.get('/issue-reports/my-reports');
+      if (repRes.success) {
+        setMyReports(repRes.reports || []);
+      }
+
+      const verRes = await api.get('/final-verifications/pending');
+      if (verRes.success) {
+        setPendingVerifications(verRes.cases || []);
       }
     } catch (err) {
       console.error(err);
@@ -73,20 +66,29 @@ export default function DriverPage() {
     }
     setSubmittingReport(true);
 
-    const formData = new FormData();
-    if (assignedCar) formData.append('car', assignedCar._id);
-    formData.append('issueCategory', issueCategory);
-    formData.append('description', reportDescription);
-    formData.append('photo', reportPhoto);
-
     try {
-      const res = await api.post('/issue-reports', formData, true);
+      const photoUrl = await uploadImageToCloudinary(reportPhoto);
+      if (!photoUrl) {
+        alert('Failed to upload photo to Cloudinary.');
+        setSubmittingReport(false);
+        return;
+      }
+
+      const payload = {
+        car: assignedCar ? assignedCar._id : undefined,
+        issueCategory,
+        description: reportDescription,
+        photo: photoUrl
+      };
+
+      const res = await api.post('/issue-reports', payload);
       if (res.success) {
         alert('Issue report submitted successfully directly to Admin!');
         setReportDescription('');
         setIssueCategory('Engine');
         setReportPhoto(null);
         setActiveTab('dashboard');
+        fetchInitialData();
       } else {
         alert(res.message || 'Submission failed');
       }
@@ -110,19 +112,28 @@ export default function DriverPage() {
     }
     setSubmittingVerify(true);
 
-    const formData = new FormData();
-    formData.append('issueCase', selectedCaseForVerify);
-    formData.append('description', verifyDescription);
-    formData.append('photo', verifyPhoto);
-
     try {
-      const res = await api.post('/final-verifications', formData, true);
+      const photoUrl = await uploadImageToCloudinary(verifyPhoto);
+      if (!photoUrl) {
+        alert('Failed to upload photo to Cloudinary.');
+        setSubmittingVerify(false);
+        return;
+      }
+
+      const payload = {
+        issueCase: selectedCaseForVerify,
+        description: verifyDescription,
+        photo: photoUrl
+      };
+
+      const res = await api.post('/final-verifications', payload);
       if (res.success) {
         alert('Final verification submitted to Admin. Thank you!');
         setVerifyDescription('');
         setVerifyPhoto(null);
         setSelectedCaseForVerify('');
         setActiveTab('dashboard');
+        fetchInitialData();
       } else {
         alert(res.message || 'Submission failed');
       }
@@ -169,6 +180,11 @@ export default function DriverPage() {
     }
   ];
 
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `http://localhost:5000${url}`;
+  };
+
   return (
     <PortalShell role="Driver" activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs}>
       {loading ? (
@@ -184,7 +200,7 @@ export default function DriverPage() {
               <div className="glass-card car-status-card">
                 {assignedCar ? (
                   <>
-                    <div className="car-hero-img" style={{ backgroundImage: assignedCar.photo ? `url(http://localhost:5000${assignedCar.photo})` : 'linear-gradient(135deg, #1e293b, #0f172a)' }}>
+                    <div className="car-hero-img" style={{ backgroundImage: assignedCar.photo ? `url(${getImageUrl(assignedCar.photo)})` : 'linear-gradient(135deg, #1e293b, #0f172a)' }}>
                       <span className={`status-badge ${assignedCar.status.replace(/\s+/g, '').toLowerCase()}`}>{assignedCar.status}</span>
                     </div>
                     <div className="car-details">
@@ -209,7 +225,7 @@ export default function DriverPage() {
                   </div>
                 )}
               </div>
-
+ 
               {/* My Recent Reports */}
               <div className="glass-card reports-section">
                 <div className="section-header">
@@ -221,7 +237,7 @@ export default function DriverPage() {
                   ) : (
                     myReports.map((r) => (
                       <div key={r._id} className="timeline-report-item glass-card">
-                        <div className="report-img" style={{ backgroundImage: `url(http://localhost:5000${r.photo})` }}></div>
+                        <div className="report-img" style={{ backgroundImage: `url(${getImageUrl(r.photo)})` }}></div>
                         <div className="report-desc">
                           <div className="report-meta">
                             <span className="report-date">{new Date(r.date).toLocaleDateString()}</span>

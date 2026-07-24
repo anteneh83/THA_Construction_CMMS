@@ -13,9 +13,9 @@ exports.createPurchaseRecord = async (req, res) => {
       price, supplierName 
     } = req.body;
 
-    const purchasePhoto = req.files && req.files['purchasePhoto'] ? `/uploads/${req.files['purchasePhoto'][0].filename}` : null;
-    const receiptPhoto = req.files && req.files['receiptPhoto'] ? `/uploads/${req.files['receiptPhoto'][0].filename}` : null;
-    const photo = req.files && req.files['photo'] ? `/uploads/${req.files['photo'][0].filename}` : null;
+    const purchasePhoto = (req.files && req.files['purchasePhoto'] && (req.files['purchasePhoto'][0].cloudinaryUrl || (req.files['purchasePhoto'][0].filename ? `/uploads/${req.files['purchasePhoto'][0].filename}` : ''))) || req.body.purchasePhoto || null;
+    const receiptPhoto = (req.files && req.files['receiptPhoto'] && (req.files['receiptPhoto'][0].cloudinaryUrl || (req.files['receiptPhoto'][0].filename ? `/uploads/${req.files['receiptPhoto'][0].filename}` : ''))) || req.body.receiptPhoto || null;
+    const photo = (req.files && req.files['photo'] && (req.files['photo'][0].cloudinaryUrl || (req.files['photo'][0].filename ? `/uploads/${req.files['photo'][0].filename}` : ''))) || req.body.photo || null;
 
     const finalPurchasePhoto = purchasePhoto || photo;
     const finalReceiptPhoto = receiptPhoto || photo;

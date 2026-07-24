@@ -3,6 +3,7 @@ const router = express.Router();
 const { createPurchaseRecord, getPurchaseRecords, getPurchaseRecord } = require('../controllers/purchaseRecordController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const cloudinaryUpload = require('../middleware/cloudinaryUpload');
 
 router.use(protect);
 
@@ -15,6 +16,7 @@ router.route('/')
       { name: 'receiptPhoto', maxCount: 1 },
       { name: 'photo', maxCount: 1 }
     ]),
+    cloudinaryUpload,
     createPurchaseRecord
   );
 

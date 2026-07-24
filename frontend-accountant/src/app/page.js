@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import PortalShell from '../components/PortalShell';
 import { api } from '../utils/api';
+import { uploadImageToCloudinary } from '../utils/cloudinary';
 
 export default function AccountantPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -25,37 +26,17 @@ export default function AccountantPage() {
   const [submittingPurchase, setSubmittingPurchase] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, [activeTab]);
+    fetchInitialData();
+  }, []);
 
-  const fetchData = async () => {
+  const fetchInitialData = async () => {
     setLoading(true);
     try {
-      if (activeTab === 'dashboard') {
-        const reqRes = await api.get('/spare-part-requests');
-        if (reqRes.success) {
-          const pendingPurchase = reqRes.requests.filter(r => r.status === 'Pending' || r.status === 'Requested');
-          setIncomingRequests(pendingPurchase);
-        }
+      const reqRes = await api.get('/spare-part-requests/assigned');
+      if (reqRes.success) setIncomingRequests(reqRes.requests || []);
 
-        const purRes = await api.get('/purchase-records');
-        if (purRes.success) setMyPurchases(purRes.records);
-      } else if (activeTab === 'requests') {
-        const reqRes = await api.get('/spare-part-requests');
-        if (reqRes.success) {
-          const pendingPurchase = reqRes.requests.filter(r => r.status === 'Pending' || r.status === 'Requested');
-          setIncomingRequests(pendingPurchase);
-        }
-      } else if (activeTab === 'purchase-log') {
-        const reqRes = await api.get('/spare-part-requests');
-        if (reqRes.success) {
-          const pendingPurchase = reqRes.requests.filter(r => r.status === 'Pending' || r.status === 'Requested');
-          setIncomingRequests(pendingPurchase);
-        }
-      } else if (activeTab === 'purchases') {
-        const purRes = await api.get('/purchase-records');
-        if (purRes.success) setMyPurchases(purRes.records);
-      }
+      const purRes = await api.get('/purchase-records/my-records');
+      if (purRes.success) setMyPurchases(purRes.records || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -76,19 +57,31 @@ export default function AccountantPage() {
     }
     setSubmittingPurchase(true);
 
-    const formData = new FormData();
-    formData.append('sparePartRequest', purchaseForm.sparePartRequest);
-    formData.append('description', purchaseForm.description);
-    formData.append('supplier', purchaseForm.supplier);
-    formData.append('quantity', purchaseForm.quantity);
-    formData.append('unitPrice', purchaseForm.unitPrice);
-    formData.append('totalPrice', (parseFloat(purchaseForm.unitPrice) || 0) * (parseInt(purchaseForm.quantity) || 1));
-    formData.append('invoiceNumber', purchaseForm.invoiceNumber);
-    formData.append('purchasePhoto', purchasePhoto);
-    formData.append('receiptPhoto', receiptPhoto);
-
     try {
-      const res = await api.post('/purchase-records', formData, true);
+      const [uploadedPurchaseUrl, uploadedReceiptUrl] = await Promise.all([
+        uploadImageToCloudinary(purchasePhoto),
+        uploadImageToCloudinary(receiptPhoto)
+      ]);
+
+      if (!uploadedPurchaseUrl || !uploadedReceiptUrl) {
+        alert('Failed to upload photos to Cloudinary.');
+        setSubmittingPurchase(false);
+        return;
+      }
+
+      const payload = {
+        sparePartRequest: purchaseForm.sparePartRequest,
+        description: purchaseForm.description,
+        supplier: purchaseForm.supplier,
+        quantity: purchaseForm.quantity,
+        unitPrice: purchaseForm.unitPrice,
+        totalPrice: (parseFloat(purchaseForm.unitPrice) || 0) * (parseInt(purchaseForm.quantity) || 1),
+        invoiceNumber: purchaseForm.invoiceNumber,
+        purchasePhoto: uploadedPurchaseUrl,
+        receiptPhoto: uploadedReceiptUrl
+      };
+
+      const res = await api.post('/purchase-records', payload);
       if (res.success) {
         alert('Purchase logged successfully. The part is now ready for physical handover to the Site Manager.');
         setPurchaseForm({ 
@@ -102,8 +95,9 @@ export default function AccountantPage() {
         setPurchasePhoto(null);
         setReceiptPhoto(null);
         setActiveTab('dashboard');
+        fetchInitialData();
       } else {
-        alert(res.message || 'Log purchase failed');
+        alert(res.message || 'Submission failed');
       }
     } catch (err) {
       console.error(err);
@@ -159,6 +153,11 @@ export default function AccountantPage() {
       )
     }
   ];
+
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `http://localhost:5000${url}`;
+  };
 
   return (
     <PortalShell role="Accountant" activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs}>
@@ -236,6 +235,61 @@ export default function AccountantPage() {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+
+              {/* My Purchases Table */}
+              <div className="glass-card table-section" style={{ gridColumn: '1 / -1', marginTop: '20px' }}>
+                <div className="table-header">
+                  <h3>Recent Purchases</h3>
+                </div>
+                <div className="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Spare Part</th>
+                        <th>Machinery</th>
+                        <th>Vendor</th>
+                        <th>Invoice No</th>
+                        <th>Qty</th>
+                        <th>Unit Price</th>
+                        <th>Total</th>
+                        <th>Evidence</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myPurchases.length === 0 ? (
+                        <tr><td colSpan="9" className="text-center">No purchases recorded by you yet.</td></tr>
+                      ) : (
+                        myPurchases.slice(0, 5).map((p) => (
+                          <tr key={p._id}>
+                            <td>{new Date(p.purchaseDate).toLocaleDateString()}</td>
+                            <td><strong>{p.sparePartName || p.sparePartRequest?.sparePartName || 'N/A'}</strong></td>
+                            <td>{p.sparePartRequest?.car?.name || 'N/A'}</td>
+                            <td>{p.supplier || p.supplierName}</td>
+                            <td><code>{p.invoiceNumber}</code></td>
+                            <td>{p.quantity || 1}</td>
+                            <td>${(p.unitPrice || 0).toLocaleString()}</td>
+                            <td><strong>${(p.totalPrice || p.price || 0).toLocaleString()}</strong></td>
+                            <td className="evidence-links">
+                              <a href={getImageUrl(p.purchasePhoto || p.photo)} target="_blank" rel="noreferrer" className="btn-text">
+                                Invoice
+                              </a>
+                              {p.receiptPhoto && (
+                                <>
+                                  {' • '}
+                                  <a href={getImageUrl(p.receiptPhoto)} target="_blank" rel="noreferrer" className="btn-text">
+                                    Receipt
+                                  </a>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
@@ -468,13 +522,13 @@ export default function AccountantPage() {
                             <td>${(p.unitPrice || 0).toLocaleString()}</td>
                             <td><strong>${(p.totalPrice || p.price || 0).toLocaleString()}</strong></td>
                             <td className="evidence-links">
-                              <a href={`http://localhost:5000${p.purchasePhoto || p.photo}`} target="_blank" rel="noreferrer" className="btn-text">
+                              <a href={getImageUrl(p.purchasePhoto || p.photo)} target="_blank" rel="noreferrer" className="btn-text">
                                 Invoice
                               </a>
                               {p.receiptPhoto && (
                                 <>
                                   {' • '}
-                                  <a href={`http://localhost:5000${p.receiptPhoto}`} target="_blank" rel="noreferrer" className="btn-text">
+                                  <a href={getImageUrl(p.receiptPhoto)} target="_blank" rel="noreferrer" className="btn-text">
                                     Receipt
                                   </a>
                                 </>

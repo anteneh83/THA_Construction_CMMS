@@ -32,7 +32,8 @@ exports.createSparePartRequest = async (req, res) => {
       reason: reason || '',
       status: 'Pending'
     };
-    if (req.file) requestData.photo = `/uploads/${req.file.filename}`;
+    const photoUrl = (req.file && (req.file.cloudinaryUrl || (req.file.filename ? `/uploads/${req.file.filename}` : ''))) || req.body.photo;
+    if (photoUrl) requestData.photo = photoUrl;
 
     const request = await SparePartRequest.create(requestData);
 

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import PortalShell from '../components/PortalShell';
 import { api } from '../utils/api';
+import { uploadImageToCloudinary } from '../utils/cloudinary';
 
 export default function SiteManagerPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -27,43 +28,23 @@ export default function SiteManagerPage() {
   const [submittingVerify, setSubmittingVerify] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, [activeTab]);
+    fetchInitialData();
+  }, []);
 
-  const fetchData = async () => {
+  const fetchInitialData = async () => {
     setLoading(true);
     try {
       const carsRes = await api.get('/cars');
-      if (carsRes.success) setCars(carsRes.cars);
+      if (carsRes.success) setCars(carsRes.cars || []);
 
-      if (activeTab === 'dashboard') {
-        const reportsRes = await api.get('/issue-reports');
-        if (reportsRes.success) setMyReports(reportsRes.reports);
-        
-        const requestsRes = await api.get('/spare-part-requests');
-        if (requestsRes.success) {
-          // Filter requests assigned to this Site Manager that are Purchased (ready for handover)
-          const pendingHandovers = requestsRes.requests.filter(r => r.status === 'Purchased');
-          setAssignedRequests(pendingHandovers);
-        }
-      } else if (activeTab === 'reports') {
-        const reportsRes = await api.get('/issue-reports');
-        if (reportsRes.success) setMyReports(reportsRes.reports);
-      } else if (activeTab === 'receipt') {
-        const requestsRes = await api.get('/spare-part-requests');
-        if (requestsRes.success) {
-          // Show requests assigned to them that are currently in 'Purchased' status (waiting for receipt)
-          const pendingReceipt = requestsRes.requests.filter(r => r.status === 'Purchased');
-          setAssignedRequests(pendingReceipt);
-        }
-      } else if (activeTab === 'verify') {
-        const casesRes = await api.get('/issue-cases');
-        if (casesRes.success) {
-          // Show active matched cases for final verification
-          const pendingVerify = casesRes.issueCases.filter(c => c.matchStatus === 'Matched');
-          setActiveCases(pendingVerify);
-        }
-      }
+      const reportsRes = await api.get('/issue-reports/my-reports');
+      if (reportsRes.success) setMyReports(reportsRes.reports || []);
+
+      const reqRes = await api.get('/spare-part-requests/assigned');
+      if (reqRes.success) setAssignedRequests(reqRes.requests || []);
+
+      const casesRes = await api.get('/issue-cases/active');
+      if (casesRes.success) setActiveCases(casesRes.issueCases || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -80,19 +61,28 @@ export default function SiteManagerPage() {
     }
     setSubmittingReport(true);
 
-    const formData = new FormData();
-    formData.append('car', reportForm.car);
-    formData.append('issueCategory', reportForm.issueCategory);
-    formData.append('description', reportForm.description);
-    formData.append('photo', reportPhoto);
-
     try {
-      const res = await api.post('/issue-reports', formData, true);
+      const photoUrl = await uploadImageToCloudinary(reportPhoto);
+      if (!photoUrl) {
+        alert('Failed to upload photo to Cloudinary.');
+        setSubmittingReport(false);
+        return;
+      }
+
+      const payload = {
+        car: reportForm.car,
+        issueCategory: reportForm.issueCategory,
+        description: reportForm.description,
+        photo: photoUrl
+      };
+
+      const res = await api.post('/issue-reports', payload);
       if (res.success) {
         alert('Independent issue report submitted successfully to Admin.');
         setReportForm({ car: '', issueCategory: 'Engine', description: '' });
         setReportPhoto(null);
         setActiveTab('dashboard');
+        fetchInitialData();
       } else {
         alert(res.message || 'Submission failed');
       }
@@ -112,18 +102,27 @@ export default function SiteManagerPage() {
     }
     setSubmittingReceipt(true);
 
-    const formData = new FormData();
-    formData.append('sparePartRequest', receiptForm.sparePartRequest);
-    formData.append('description', receiptForm.description || 'I have received this spare part from the Accountant.');
-    formData.append('photo', receiptPhoto);
-
     try {
-      const res = await api.post('/received-verifications', formData, true);
+      const photoUrl = await uploadImageToCloudinary(receiptPhoto);
+      if (!photoUrl) {
+        alert('Failed to upload photo to Cloudinary.');
+        setSubmittingReceipt(false);
+        return;
+      }
+
+      const payload = {
+        sparePartRequest: receiptForm.sparePartRequest,
+        description: receiptForm.description || 'I have received this spare part from the Accountant.',
+        photo: photoUrl
+      };
+
+      const res = await api.post('/received-verifications', payload);
       if (res.success) {
         alert('Spare part receipt confirmed. Accountant transaction will now be validated by Admin.');
         setReceiptForm({ sparePartRequest: '', description: '' });
         setReceiptPhoto(null);
         setActiveTab('dashboard');
+        fetchInitialData();
       } else {
         alert(res.message || 'Verification failed');
       }
@@ -143,18 +142,27 @@ export default function SiteManagerPage() {
     }
     setSubmittingVerify(true);
 
-    const formData = new FormData();
-    formData.append('issueCase', verifyForm.issueCase);
-    formData.append('description', verifyForm.description);
-    formData.append('photo', verifyPhoto);
-
     try {
-      const res = await api.post('/final-verifications', formData, true);
+      const photoUrl = await uploadImageToCloudinary(verifyPhoto);
+      if (!photoUrl) {
+        alert('Failed to upload photo to Cloudinary.');
+        setSubmittingVerify(false);
+        return;
+      }
+
+      const payload = {
+        issueCase: verifyForm.issueCase,
+        description: verifyForm.description,
+        photo: photoUrl
+      };
+
+      const res = await api.post('/final-verifications', payload);
       if (res.success) {
         alert('Repair verification submitted. Case will close once Driver also verifies.');
         setVerifyForm({ issueCase: '', description: '' });
         setVerifyPhoto(null);
         setActiveTab('dashboard');
+        fetchInitialData();
       } else {
         alert(res.message || 'Verification failed');
       }
@@ -210,6 +218,11 @@ export default function SiteManagerPage() {
     }
   ];
 
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `http://localhost:5000${url}`;
+  };
+
   return (
     <PortalShell role="SiteManager" activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs}>
       {loading ? (
@@ -260,7 +273,7 @@ export default function SiteManagerPage() {
                   ) : (
                     myReports.map((r) => (
                       <div key={r._id} className="timeline-report-item glass-card">
-                        <div className="report-img" style={{ backgroundImage: `url(http://localhost:5000${r.photo})` }}></div>
+                        <div className="report-img" style={{ backgroundImage: `url(${getImageUrl(r.photo)})` }}></div>
                         <div className="report-desc">
                           <div className="report-meta">
                             <span className="report-date">{new Date(r.date).toLocaleDateString()}</span>

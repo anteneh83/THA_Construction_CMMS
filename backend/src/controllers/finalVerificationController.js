@@ -18,7 +18,9 @@ exports.createFinalVerification = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only Drivers and Site Managers can submit final verifications' });
     }
 
-    if (!req.file) {
+    const photoUrl = (req.file && (req.file.cloudinaryUrl || (req.file.filename ? `/uploads/${req.file.filename}` : ''))) || req.body.photo;
+
+    if (!photoUrl) {
       return res.status(400).json({ success: false, message: 'Photo is required' });
     }
 
@@ -35,7 +37,7 @@ exports.createFinalVerification = async (req, res) => {
       sparePartRequest: sparePartRequest || null,
       submittedBy: req.user._id,
       submitterRole: req.user.role,
-      photo: `/uploads/${req.file.filename}`,
+      photo: photoUrl,
       description: description || '',
       date: date || Date.now()
     });

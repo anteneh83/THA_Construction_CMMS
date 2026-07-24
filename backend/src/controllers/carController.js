@@ -30,7 +30,8 @@ exports.createCar = async (req, res) => {
       assignedSite: assignedSite || '',
       registrationDocuments: registrationDocuments || []
     };
-    if (req.file) carData.photo = `/uploads/${req.file.filename}`;
+    const photoUrl = (req.file && (req.file.cloudinaryUrl || (req.file.filename ? `/uploads/${req.file.filename}` : ''))) || req.body.photo || '';
+    if (photoUrl) carData.photo = photoUrl;
 
     if (assignedDriver) {
       const driver = await User.findById(assignedDriver);
@@ -125,7 +126,8 @@ exports.updateCar = async (req, res) => {
     if (assignedSite !== undefined) car.assignedSite = assignedSite;
     if (registrationDocuments !== undefined) car.registrationDocuments = registrationDocuments;
 
-    if (req.file) car.photo = `/uploads/${req.file.filename}`;
+    const updatedPhotoUrl = (req.file && (req.file.cloudinaryUrl || (req.file.filename ? `/uploads/${req.file.filename}` : ''))) || req.body.photo;
+    if (updatedPhotoUrl) car.photo = updatedPhotoUrl;
 
     if (assignedDriver !== undefined) {
       if (car.assignedDriver) await User.findByIdAndUpdate(car.assignedDriver, { assignedCar: null });

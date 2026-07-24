@@ -14,7 +14,9 @@ exports.createIssueReport = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only Drivers and Site Managers can submit issue reports' });
     }
 
-    if (!req.file) {
+    const photoUrl = (req.file && (req.file.cloudinaryUrl || (req.file.filename ? `/uploads/${req.file.filename}` : ''))) || req.body.photo;
+
+    if (!photoUrl) {
       return res.status(400).json({ success: false, message: 'Photo is required' });
     }
 
@@ -37,7 +39,7 @@ exports.createIssueReport = async (req, res) => {
       reportedBy: reporter._id,
       reporterRole: reporter.role,
       issueCategory: issueCategory || 'General',
-      photo: `/uploads/${req.file.filename}`,
+      photo: photoUrl,
       description: description || '',
       date: date || Date.now(),
       status: 'Reported'

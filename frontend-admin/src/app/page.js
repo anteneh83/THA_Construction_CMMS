@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import PortalShell from '../components/PortalShell';
 import { api } from '../utils/api';
+import { uploadImageToCloudinary } from '../utils/cloudinary';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -140,27 +141,37 @@ export default function AdminPage() {
   // Car Management actions
   const handleCarSubmit = async (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append('name', carForm.name);
-    formData.append('plateNumber', carForm.plateNumber);
-    formData.append('type', carForm.type);
-    formData.append('status', carForm.status);
-    formData.append('brand', carForm.brand || '');
-    formData.append('model', carForm.model || '');
-    formData.append('manufacturingYear', carForm.manufacturingYear || '');
-    formData.append('engineNumber', carForm.engineNumber || '');
-    formData.append('chassisNumber', carForm.chassisNumber || '');
-    formData.append('currentMileage', carForm.currentMileage || '');
-    formData.append('assignedSite', carForm.assignedSite || '');
-    if (carForm.assignedDriver) formData.append('assignedDriver', carForm.assignedDriver);
-    if (carPhoto) formData.append('photo', carPhoto);
-
     try {
+      let photoUrl = '';
+      if (carPhoto) {
+        photoUrl = await uploadImageToCloudinary(carPhoto);
+        if (!photoUrl) {
+          alert('Could not upload image to Cloudinary. Please check your upload preset settings.');
+          return;
+        }
+      }
+
+      const payload = {
+        name: carForm.name,
+        plateNumber: carForm.plateNumber,
+        type: carForm.type,
+        status: carForm.status,
+        brand: carForm.brand || '',
+        model: carForm.model || '',
+        manufacturingYear: carForm.manufacturingYear || '',
+        engineNumber: carForm.engineNumber || '',
+        chassisNumber: carForm.chassisNumber || '',
+        currentMileage: carForm.currentMileage || '',
+        assignedSite: carForm.assignedSite || '',
+        assignedDriver: carForm.assignedDriver || undefined,
+        ...(photoUrl ? { photo: photoUrl } : {})
+      };
+
       let res;
       if (selectedCar) {
-        res = await api.put(`/cars/${selectedCar._id}`, formData, true);
+        res = await api.put(`/cars/${selectedCar._id}`, payload);
       } else {
-        res = await api.post('/cars', formData, true);
+        res = await api.post('/cars', payload);
       }
       if (res.success) {
         setShowCarModal(false);
@@ -173,7 +184,7 @@ export default function AdminPage() {
         setSelectedCar(null);
         fetchData();
       } else {
-        alert(res.message);
+        alert(res.message || 'Action failed');
       }
     } catch (err) {
       console.error(err);
@@ -308,17 +319,23 @@ export default function AdminPage() {
 
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append('issueCase', selectedCaseForRequest._id);
-    formData.append('car', selectedCaseForRequest.car._id);
-    formData.append('sparePartName', requestForm.sparePartName);
-    formData.append('serialNumber', requestForm.serialNumber);
-    formData.append('assignedSiteManager', requestForm.assignedSiteManager);
-    formData.append('assignedAccountant', requestForm.assignedAccountant);
-    if (requestPhoto) formData.append('photo', requestPhoto);
-
     try {
-      const res = await api.post('/spare-part-requests', formData, true);
+      let photoUrl = '';
+      if (requestPhoto) {
+        photoUrl = await uploadImageToCloudinary(requestPhoto);
+      }
+
+      const payload = {
+        issueCase: selectedCaseForRequest._id,
+        car: selectedCaseForRequest.car._id,
+        sparePartName: requestForm.sparePartName,
+        serialNumber: requestForm.serialNumber,
+        assignedSiteManager: requestForm.assignedSiteManager,
+        assignedAccountant: requestForm.assignedAccountant,
+        ...(photoUrl ? { photo: photoUrl } : {})
+      };
+
+      const res = await api.post('/spare-part-requests', payload);
       if (res.success) {
         setShowRequestModal(false);
         setRequestForm({ sparePartName: '', serialNumber: '', assignedSiteManager: '', assignedAccountant: '' });
@@ -328,7 +345,7 @@ export default function AdminPage() {
         await api.put(`/cars/${selectedCaseForRequest.car._id}`, { status: 'Under Maintenance' });
         fetchData();
       } else {
-        alert(res.message);
+        alert(res.message || 'Action failed');
       }
     } catch (err) {
       console.error(err);
@@ -530,6 +547,11 @@ export default function AdminPage() {
     }
   ];
 
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `http://localhost:5000${url}`;
+  };
+
   return (
     <PortalShell role="Admin" activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs}>
       {loading ? (
@@ -650,7 +672,7 @@ export default function AdminPage() {
                 ) : (
                   filteredCars.map((car) => (
                     <div key={car._id} className="glass-card resource-card">
-                    <div className="resource-photo" style={{ backgroundImage: car.photo ? `url(http://localhost:5000${car.photo})` : 'linear-gradient(135deg, #1e293b, #0f172a)' }}>
+                    <div className="resource-photo" style={{ backgroundImage: car.photo ? `url(${getImageUrl(car.photo)})` : 'linear-gradient(135deg, #1e293b, #0f172a)' }}>
                       <span className={`status-badge ${car.status.replace(/\s+/g, '').toLowerCase()}`}>{car.status}</span>
                     </div>
                     <div className="resource-body">
@@ -701,7 +723,7 @@ export default function AdminPage() {
                                   <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Photos Before Repair:</div>
                                   <div className="history-photos">
                                     {h.photosBeforeRepair.map((p, idx) => (
-                                      <img key={idx} src={`http://localhost:5000${p}`} alt="Before Repair" className="evidence-thumb" />
+                                      <img key={idx} src={getImageUrl(p)} alt="Before Repair" className="evidence-thumb" />
                                     ))}
                                   </div>
                                 </div>
@@ -711,7 +733,7 @@ export default function AdminPage() {
                                   <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Photos After Repair:</div>
                                   <div className="history-photos">
                                     {h.photosAfterRepair.map((p, idx) => (
-                                      <img key={idx} src={`http://localhost:5000${p}`} alt="After Repair" className="evidence-thumb" />
+                                      <img key={idx} src={getImageUrl(p)} alt="After Repair" className="evidence-thumb" />
                                     ))}
                                   </div>
                                 </div>
@@ -961,7 +983,7 @@ export default function AdminPage() {
                     ) : (
                       issueReports.map((r) => (
                         <div key={r._id} className="report-list-item glass-card">
-                          <div className="item-photo" style={{ backgroundImage: `url(http://localhost:5000${r.photo})` }}></div>
+                          <div className="item-photo" style={{ backgroundImage: `url(${getImageUrl(r.photo)})` }}></div>
                           <div className="item-details">
                             <div className="item-meta">
                               <span className={`badge ${r.reporterRole.toLowerCase()}`}>{r.reporterRole}</span>
@@ -1037,7 +1059,7 @@ export default function AdminPage() {
                             <div className="pane-title">Driver Evidence</div>
                             {c.driverReport ? (
                               <div className="evidence-block">
-                                <img src={`http://localhost:5000${c.driverReport.photo}`} className="evidence-img" />
+                                <img src={getImageUrl(c.driverReport.photo)} className="evidence-img" />
                                 <p><strong>Category:</strong> {c.driverReport.issueCategory}</p>
                                 <p>{c.driverReport.description || 'No description'}</p>
                               </div>
@@ -1050,7 +1072,7 @@ export default function AdminPage() {
                             <div className="pane-title">Site Manager Evidence</div>
                             {c.siteManagerReport ? (
                               <div className="evidence-block">
-                                <img src={`http://localhost:5000${c.siteManagerReport.photo}`} className="evidence-img" />
+                                <img src={getImageUrl(c.siteManagerReport.photo)} className="evidence-img" />
                                 <p><strong>Category:</strong> {c.siteManagerReport.issueCategory}</p>
                                 <p>{c.siteManagerReport.description || 'No description'}</p>
                               </div>
@@ -1241,7 +1263,7 @@ export default function AdminPage() {
                         <div className="compare-pane">
                           <div className="pane-title">Accountant Purchase Log</div>
                           <div className="evidence-block">
-                            <img src={`http://localhost:5000${v.purchaseRecord?.purchasePhoto || v.purchaseRecord?.photo}`} className="evidence-img" />
+                            <img src={getImageUrl(v.purchaseRecord?.purchasePhoto || v.purchaseRecord?.photo)} className="evidence-img" />
                             <div className="evidence-details" style={{ marginTop: '10px' }}>
                               <div><strong>Supplier:</strong> {v.purchaseRecord?.supplier || v.purchaseRecord?.supplierName || 'N/A'}</div>
                               <div><strong>Invoice No:</strong> {v.purchaseRecord?.invoiceNumber || 'N/A'}</div>
@@ -1255,7 +1277,7 @@ export default function AdminPage() {
                         <div className="compare-pane">
                           <div className="pane-title">Site Manager Receipt Verification</div>
                           <div className="evidence-block">
-                            <img src={`http://localhost:5000${v.receivedVerification?.photo}`} className="evidence-img" />
+                            <img src={getImageUrl(v.receivedVerification?.photo)} className="evidence-img" />
                             <div className="evidence-details" style={{ marginTop: '10px' }}>
                               <div><strong>Received Date:</strong> {new Date(v.receivedVerification?.dateReceived || v.receivedVerification?.date).toLocaleDateString()}</div>
                               <p className="text-muted">"{v.receivedVerification?.description || 'Confirmed receipt'}"</p>
@@ -1315,7 +1337,7 @@ export default function AdminPage() {
                             <div className="pane-title">Driver Final Verification</div>
                             {group.driverVer ? (
                               <div className="evidence-block">
-                                <img src={`http://localhost:5000${group.driverVer.photo}`} className="evidence-img" />
+                                <img src={getImageUrl(group.driverVer.photo)} className="evidence-img" />
                                 <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>
                                   <strong>Date:</strong> {new Date(group.driverVer.date).toLocaleDateString()}
                                 </div>
@@ -1331,7 +1353,7 @@ export default function AdminPage() {
                             <div className="pane-title">Site Manager Final Verification</div>
                             {group.siteManagerVer ? (
                               <div className="evidence-block">
-                                <img src={`http://localhost:5000${group.siteManagerVer.photo}`} className="evidence-img" />
+                                <img src={getImageUrl(group.siteManagerVer.photo)} className="evidence-img" />
                                 <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>
                                   <strong>Date:</strong> {new Date(group.siteManagerVer.date).toLocaleDateString()}
                                 </div>
@@ -1636,7 +1658,7 @@ export default function AdminPage() {
                                 <p><strong>Category:</strong> {selectedHistoryDetail.driverReport.issueCategory || 'General'}</p>
                                 <p className="notes-block">"{selectedHistoryDetail.driverReport.description}"</p>
                                 {selectedHistoryDetail.driverReport.photo && (
-                                  <img src={`http://localhost:5000${selectedHistoryDetail.driverReport.photo}`} className="evidence-thumb" alt="Driver reported photo" />
+                                  <img src={getImageUrl(selectedHistoryDetail.driverReport.photo)} className="evidence-thumb" alt="Driver reported photo" />
                                 )}
                               </div>
                             ) : <p className="text-muted">No Driver report recorded.</p>}
@@ -1647,7 +1669,7 @@ export default function AdminPage() {
                                 <p><strong>Category:</strong> {selectedHistoryDetail.siteManagerReport.issueCategory || 'General'}</p>
                                 <p className="notes-block">"{selectedHistoryDetail.siteManagerReport.description}"</p>
                                 {selectedHistoryDetail.siteManagerReport.photo && (
-                                  <img src={`http://localhost:5000${selectedHistoryDetail.siteManagerReport.photo}`} className="evidence-thumb" alt="Site Manager reported photo" />
+                                  <img src={getImageUrl(selectedHistoryDetail.siteManagerReport.photo)} className="evidence-thumb" alt="Site Manager reported photo" />
                                 )}
                               </div>
                             ) : <p className="text-muted">No Site Manager report recorded.</p>}
@@ -1671,13 +1693,13 @@ export default function AdminPage() {
                                   {selectedHistoryDetail.purchaseReport.purchasePhoto && (
                                     <div>
                                       <span className="evidence-lbl">Purchase Photo</span>
-                                      <img src={`http://localhost:5000${selectedHistoryDetail.purchaseReport.purchasePhoto}`} className="evidence-thumb" alt="Purchase record invoice scan" />
+                                      <img src={getImageUrl(selectedHistoryDetail.purchaseReport.purchasePhoto)} className="evidence-thumb" alt="Purchase record invoice scan" />
                                     </div>
                                   )}
                                   {selectedHistoryDetail.purchaseReport.receiptPhoto && (
                                     <div>
                                       <span className="evidence-lbl">Receipt Photo</span>
-                                      <img src={`http://localhost:5000${selectedHistoryDetail.purchaseReport.receiptPhoto}`} className="evidence-thumb" alt="Receipt photo" />
+                                      <img src={getImageUrl(selectedHistoryDetail.purchaseReport.receiptPhoto)} className="evidence-thumb" alt="Receipt photo" />
                                     </div>
                                   )}
                                 </div>
@@ -1695,7 +1717,7 @@ export default function AdminPage() {
                               <div className="report-detail-item">
                                 <p className="notes-block">"{selectedHistoryDetail.driverVerification.description}"</p>
                                 {selectedHistoryDetail.driverVerification.photo && (
-                                  <img src={`http://localhost:5000${selectedHistoryDetail.driverVerification.photo}`} className="evidence-thumb" alt="Driver final verification photo" />
+                                  <img src={getImageUrl(selectedHistoryDetail.driverVerification.photo)} className="evidence-thumb" alt="Driver final verification photo" />
                                 )}
                               </div>
                             ) : <p className="text-muted">Awaiting Driver verification.</p>}
@@ -1705,7 +1727,7 @@ export default function AdminPage() {
                               <div className="report-detail-item">
                                 <p className="notes-block">"{selectedHistoryDetail.siteManagerVerification.description}"</p>
                                 {selectedHistoryDetail.siteManagerVerification.photo && (
-                                  <img src={`http://localhost:5000${selectedHistoryDetail.siteManagerVerification.photo}`} className="evidence-thumb" alt="Site Manager final verification photo" />
+                                  <img src={getImageUrl(selectedHistoryDetail.siteManagerVerification.photo)} className="evidence-thumb" alt="Site Manager final verification photo" />
                                 )}
                               </div>
                             ) : <p className="text-muted">Awaiting Site Manager verification.</p>}

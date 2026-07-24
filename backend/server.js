@@ -18,6 +18,7 @@ const handoverValidationRoutes = require('./src/routes/handoverValidationRoutes'
 const finalVerificationRoutes = require('./src/routes/finalVerificationRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
+const uploadRoutes = require('./src/routes/uploadRoutes');
 
 const app = express();
 
@@ -44,6 +45,16 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Redirect requests that mistakenly prepended the backend URL to a Cloudinary absolute URL
+app.use((req, res, next) => {
+  const match = req.url.match(/^\/https?:\/?/i);
+  if (match) {
+    const actualUrl = req.url.substring(1).replace(/^(https?):?\/?/i, '$1://');
+    return res.redirect(actualUrl);
+  }
+  next();
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -57,6 +68,7 @@ app.use('/api/handover-validations', handoverValidationRoutes);
 app.use('/api/final-verifications', finalVerificationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

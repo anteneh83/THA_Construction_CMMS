@@ -11,7 +11,9 @@ exports.createReceivedVerification = async (req, res) => {
   try {
     const { sparePartRequest, description, date, sparePartName, serialNumber, dateReceived } = req.body;
 
-    if (!req.file) {
+    const photoUrl = (req.file && (req.file.cloudinaryUrl || (req.file.filename ? `/uploads/${req.file.filename}` : ''))) || req.body.photo;
+
+    if (!photoUrl) {
       return res.status(400).json({ success: false, message: 'Photo is required' });
     }
 
@@ -23,7 +25,7 @@ exports.createReceivedVerification = async (req, res) => {
       siteManager: req.user._id,
       sparePartName: sparePartName || spr.sparePartName,
       serialNumber: serialNumber || spr.serialNumber,
-      photo: `/uploads/${req.file.filename}`,
+      photo: photoUrl,
       description: description || '',
       dateReceived: dateReceived || date || Date.now(),
       date: date || Date.now()
