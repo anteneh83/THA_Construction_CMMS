@@ -248,4 +248,31 @@ body {
   .modal-content { padding: 20px !important; margin: 0 0 20px !important; max-width: 100% !important; }
   .login-container { align-items: flex-start !important; padding: 16px !important; overflow-y: auto !important; }
   .login-card { padding: 24px !important; margin: auto 0; }
+  .filter-bar, .search-filter-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 14px !important;
+  }
+  .filter-bar > div, .search-filter-container > div,
+  .filter-bar .form-group, .search-filter-container .form-group {
+    width: 100% !important;
+    margin-bottom: 0 !important;
+  }
+  .filter-bar input, .filter-bar select,
+  .search-filter-container input, .search-filter-container select {
+    width: 100% !important;
+  }
 }
+
+/* Default Desktop Filter Bar Grid */
+.filter-bar, .search-filter-container {
+  padding: 16px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: flex-end;
+  width: 100%;
+}
+

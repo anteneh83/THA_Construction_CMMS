@@ -650,7 +650,7 @@ export default function AdminPage() {
               </div>
 
               {/* Search and Filter Section */}
-              <div className="glass-card" style={{ padding: '16px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="glass-card filter-bar">
                 <div>
                   <label className="form-label">Search by Name or Plate</label>
                   <input type="text" className="form-input" placeholder="Search machinery..." value={searchCar} onChange={(e) => setSearchCar(e.target.value)} />
@@ -848,7 +848,7 @@ export default function AdminPage() {
               </div>
 
               {/* Search and Filter Section */}
-              <div className="glass-card" style={{ padding: '16px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="glass-card filter-bar">
                 <div>
                   <label className="form-label">Search by Name or Username</label>
                   <input type="text" className="form-input" placeholder="Search team members..." value={searchUser} onChange={(e) => setSearchUser(e.target.value)} />
@@ -1031,7 +1031,7 @@ export default function AdminPage() {
                   </div>
                   
                   {/* Search and Filter for Cases */}
-                  <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border)', marginBottom: '12px' }}>
+                  <div className="search-filter-container" style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
                     <input type="text" className="form-input" placeholder="Search cases by machinery name..." value={searchCase} onChange={(e) => setSearchCase(e.target.value)} style={{ marginBottom: '8px' }} />
                     <select className="form-input" value={caseStatusFilter} onChange={(e) => setCaseStatusFilter(e.target.value)}>
                       <option value="">All Status</option>
@@ -1168,7 +1168,7 @@ export default function AdminPage() {
           {activeTab === 'spare-parts' && (
             <div className="spare-parts-view animate-fade-in">
               {/* Search and Filter Section */}
-              <div className="glass-card" style={{ padding: '16px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="glass-card filter-bar">
                 <div>
                   <label className="form-label">Search by Part Name or Machinery</label>
                   <input type="text" className="form-input" placeholder="Search spare parts..." value={searchPart} onChange={(e) => setSearchPart(e.target.value)} />
@@ -1231,7 +1231,7 @@ export default function AdminPage() {
           {activeTab === 'handover-validation' && (
             <div className="handover-view animate-fade-in">
               {/* Search and Filter Section */}
-              <div className="glass-card" style={{ padding: '16px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="glass-card filter-bar">
                 <div>
                   <label className="form-label">Search by Part Name</label>
                   <input type="text" className="form-input" placeholder="Search handovers..." value={searchHandover} onChange={(e) => setSearchHandover(e.target.value)} />
@@ -1310,7 +1310,7 @@ export default function AdminPage() {
           {activeTab === 'final-approval' && (
             <div className="final-approval-view animate-fade-in">
               {/* Search Section */}
-              <div className="glass-card" style={{ padding: '16px', marginBottom: '20px' }}>
+              <div className="glass-card filter-bar">
                 <label className="form-label">Search by Machinery Name</label>
                 <input type="text" className="form-input" placeholder="Search approvals..." value={searchApproval} onChange={(e) => setSearchApproval(e.target.value)} />
               </div>
