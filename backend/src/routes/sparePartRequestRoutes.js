@@ -11,6 +11,8 @@ router.route('/')
   .get(authorize('Admin', 'Accountant', 'SiteManager'), getSparePartRequests)
   .post(authorize('Admin'), upload.single('photo'), cloudinaryUpload, createSparePartRequest);
 
+router.get('/assigned', authorize('Admin', 'Accountant', 'SiteManager'), getSparePartRequests);
+
 router.route('/:id').get(authorize('Admin', 'Accountant', 'SiteManager'), getSparePartRequest);
 router.put('/:id/status', authorize('Admin'), updateRequestStatus);
 

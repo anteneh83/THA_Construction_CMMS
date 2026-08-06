@@ -1,4 +1,17 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const getBaseUrl = () => {
+  // If NEXT_PUBLIC_API_URL is set at build/runtime, use it (no trailing slash)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '') + '/api';
+  }
+
+  // In browser use the current origin so dev setups that proxy /api work
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/api`;
+  }
+
+  // Fallback for server-side / tests
+  return 'http://localhost:5001/api';
+};
 
 const getHeaders = (isMultipart = false) => {
   const headers = {};
@@ -17,7 +30,7 @@ const getHeaders = (isMultipart = false) => {
 
 export const api = {
   get: async (endpoint) => {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
       method: 'GET',
       headers: getHeaders(),
     });
@@ -26,7 +39,7 @@ export const api = {
 
   post: async (endpoint, data, isMultipart = false) => {
     const body = isMultipart ? data : JSON.stringify(data);
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
       method: 'POST',
       headers: getHeaders(isMultipart),
       body,
@@ -36,7 +49,7 @@ export const api = {
 
   put: async (endpoint, data, isMultipart = false) => {
     const body = isMultipart ? data : JSON.stringify(data);
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
       method: 'PUT',
       headers: getHeaders(isMultipart),
       body,
@@ -45,7 +58,7 @@ export const api = {
   },
 
   delete: async (endpoint) => {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
       method: 'DELETE',
       headers: getHeaders(),
     });
@@ -53,7 +66,7 @@ export const api = {
   },
 
   login: async (username, password) => {
-    const response = await fetch(`${BASE_URL}/auth/login`, {
+    const response = await fetch(`${getBaseUrl()}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),

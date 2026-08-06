@@ -33,7 +33,7 @@ export default function DriverPage() {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const meRes = await api.get('/users/me');
+      const meRes = await api.get('/auth/me');
       if (meRes.success) {
         setUser(meRes.user);
         if (meRes.user.assignedCar) {
@@ -46,9 +46,9 @@ export default function DriverPage() {
         setMyReports(repRes.reports || []);
       }
 
-      const verRes = await api.get('/final-verifications/pending');
+      const verRes = await api.get('/issue-cases/active');
       if (verRes.success) {
-        setPendingVerifications(verRes.cases || []);
+        setPendingVerifications(verRes.issueCases || []);
       }
     } catch (err) {
       console.error(err);

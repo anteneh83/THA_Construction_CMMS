@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Login from './Login';
 import { api } from '../utils/api';
 
-export default function PortalShell({ role, children, activeTab, setActiveTab, tabs }) {
+export default function PortalShell({ role, children, activeTab, setActiveTab, tabs, onAuthenticated }) {
   const [user, setUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [notifications, setNotifications] = useState([]);
@@ -19,6 +19,9 @@ export default function PortalShell({ role, children, activeTab, setActiveTab, t
     if (currentUser && token && currentUser.role === role) {
       setUser(currentUser);
       fetchNotifications();
+      if (typeof onAuthenticated === 'function') {
+        onAuthenticated();
+      }
     } else {
       api.logout();
       setUser(null);
@@ -95,7 +98,13 @@ export default function PortalShell({ role, children, activeTab, setActiveTab, t
   }
 
   if (!user) {
-    return <Login role={role} onLoginSuccess={(u) => { setUser(u); fetchNotifications(); }} />;
+    return <Login role={role} onLoginSuccess={(u) => {
+      setUser(u);
+      fetchNotifications();
+      if (typeof onAuthenticated === 'function') {
+        onAuthenticated();
+      }
+    }} />;
   }
 
   return (

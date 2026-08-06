@@ -32,7 +32,7 @@ export default function AccountantPage() {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const reqRes = await api.get('/spare-part-requests/assigned');
+      const reqRes = await api.get('/spare-part-requests?status=Pending');
       if (reqRes.success) setIncomingRequests(reqRes.requests || []);
 
       const purRes = await api.get('/purchase-records/my-records');

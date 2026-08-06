@@ -26,6 +26,28 @@ exports.createIssueCase = async (req, res) => {
   }
 };
 
+// @desc    Get active repair cases relevant to this user
+// @route   GET /api/issue-cases/active
+exports.getActiveIssueCases = async (req, res) => {
+  try {
+    const query = { matchStatus: { $in: ['Matched', 'Approved'] } };
+    if (req.user.role === 'Driver' && req.user.assignedCar) {
+      query.car = req.user.assignedCar;
+    }
+
+    const cases = await IssueCase.find(query)
+      .populate('car', 'name plateNumber type')
+      .populate({ path: 'driverReport', populate: [{ path: 'reportedBy', select: 'username fullName' }, { path: 'car', select: 'name plateNumber' }] })
+      .populate({ path: 'siteManagerReport', populate: [{ path: 'reportedBy', select: 'username fullName' }, { path: 'car', select: 'name plateNumber' }] })
+      .populate('validatedBy', 'username fullName')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, issueCases: cases });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
 // @desc    Get all issue cases with cross-validation view
 // @route   GET /api/issue-cases
 exports.getIssueCases = async (req, res) => {
@@ -86,6 +108,10 @@ exports.validateIssueCase = async (req, res) => {
 
     const issueCase = await IssueCase.findById(req.params.id);
     if (!issueCase) return res.status(404).json({ success: false, message: 'Issue case not found' });
+
+    if (issueCase.matchStatus !== 'Pending') {
+      return res.status(400).json({ success: false, message: 'Only pending cases can be validated again' });
+    }
 
     issueCase.matchStatus = matchStatus;
     issueCase.validatedBy = req.user._id;

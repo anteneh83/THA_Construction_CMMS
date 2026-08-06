@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { createIssueCase, getIssueCases, getIssueCase, validateIssueCase } = require('../controllers/issueCaseController');
+const { createIssueCase, getIssueCases, getIssueCase, validateIssueCase, getActiveIssueCases } = require('../controllers/issueCaseController');
 const { protect, authorize } = require('../middleware/auth');
 
 router.use(protect);
+
+router.get('/active', getActiveIssueCases);
 router.use(authorize('Admin'));
 
 router.route('/').get(getIssueCases).post(createIssueCase);

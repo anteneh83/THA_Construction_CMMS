@@ -40,7 +40,7 @@ export default function SiteManagerPage() {
       const reportsRes = await api.get('/issue-reports/my-reports');
       if (reportsRes.success) setMyReports(reportsRes.reports || []);
 
-      const reqRes = await api.get('/spare-part-requests/assigned');
+      const reqRes = await api.get('/spare-part-requests?status=Purchased');
       if (reqRes.success) setAssignedRequests(reqRes.requests || []);
 
       const casesRes = await api.get('/issue-cases/active');
@@ -224,7 +224,13 @@ export default function SiteManagerPage() {
   };
 
   return (
-    <PortalShell role="SiteManager" activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs}>
+    <PortalShell
+      role="SiteManager"
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      tabs={tabs}
+      onAuthenticated={fetchInitialData}
+    >
       {loading ? (
         <div className="flex-center" style={{ height: '300px' }}><span className="spinner"></span></div>
       ) : (

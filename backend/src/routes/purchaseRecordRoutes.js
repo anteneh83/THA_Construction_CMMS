@@ -20,6 +20,8 @@ router.route('/')
     createPurchaseRecord
   );
 
+router.get('/my-records', authorize('Admin', 'Accountant'), getPurchaseRecords);
+
 router.route('/:id').get(authorize('Admin', 'Accountant'), getPurchaseRecord);
 
 module.exports = router;

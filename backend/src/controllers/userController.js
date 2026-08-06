@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Car = require('../models/Car');
 
@@ -5,10 +7,42 @@ const Car = require('../models/Car');
 // @route   POST /api/users
 exports.createUser = async (req, res) => {
   try {
+    console.log('createUser payload:', req.body);
     const { username, password, role, fullName, phone, assignedCar } = req.body;
 
-    // Check if username already exists
-    const existingUser = await User.findOne({ username });
+    if (!username || !role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username and role are required'
+      });
+    }
+
+    const normalizedUsername = username.trim();
+    const normalizedRole = role.trim();
+
+    const allowedRoles = ['Driver', 'SiteManager', 'Accountant'];
+    if (!allowedRoles.includes(normalizedRole)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role selected'
+      });
+    }
+
+    if (normalizedRole === 'Admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot create Admin accounts'
+      });
+    }
+
+    if (password && password.length > 0 && password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    const existingUser = await User.findOne({ username: normalizedUsername });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -16,25 +50,25 @@ exports.createUser = async (req, res) => {
       });
     }
 
-    // Only Admin can create users, and they cannot create other Admins
-    if (role === 'Admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Cannot create Admin accounts'
-      });
-    }
+    const generatedPassword = password || crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
 
     const userData = {
-      username,
-      password,
-      role,
-      fullName: fullName || '',
-      phone: phone || '',
+      username: normalizedUsername,
+      password: generatedPassword,
+      role: normalizedRole,
+      fullName: fullName ? fullName.trim() : '',
+      phone: phone ? phone.trim() : '',
       mustChangePassword: true
     };
 
-    // If Driver, optionally assign a car
-    if (role === 'Driver' && assignedCar) {
+    if (normalizedRole === 'Driver' && assignedCar) {
+      if (!mongoose.Types.ObjectId.isValid(assignedCar)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid assigned car selection'
+        });
+      }
+
       const car = await Car.findById(assignedCar);
       if (!car) {
         return res.status(404).json({
@@ -52,11 +86,23 @@ exports.createUser = async (req, res) => {
       await Car.findByIdAndUpdate(assignedCar, { assignedDriver: user._id });
     }
 
-    res.status(201).json({
-      success: true,
-      user
-    });
+    // If we generated a password, include it in the response so the admin
+    // can communicate it to the new user. Do NOT expose this in logs.
+    const responseBody = { success: true, user };
+    if (!password) responseBody.tempPassword = generatedPassword;
+
+    res.status(201).json(responseBody);
   } catch (error) {
+    console.error('createUser error:', error);
+
+    if (error.code === 11000 && error.keyValue && error.keyValue.username) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username already exists',
+        error: error.message
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Server error',

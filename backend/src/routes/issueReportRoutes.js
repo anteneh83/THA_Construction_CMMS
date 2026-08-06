@@ -7,6 +7,8 @@ const cloudinaryUpload = require('../middleware/cloudinaryUpload');
 
 router.use(protect);
 
+router.get('/my-reports', getIssueReports);
+
 router.route('/')
   .get(getIssueReports)
   .post(authorize('Driver', 'SiteManager'), upload.single('photo'), cloudinaryUpload, createIssueReport);

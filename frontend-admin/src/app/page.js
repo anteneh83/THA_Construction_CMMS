@@ -56,6 +56,9 @@ export default function AdminPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userForm, setUserForm] = useState({ username: '', password: '', role: 'Driver', fullName: '', phone: '', assignedCar: '' });
+  const [tempPasswordModalOpen, setTempPasswordModalOpen] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [generatedUsername, setGeneratedUsername] = useState('');
 
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [selectedCaseForRequest, setSelectedCaseForRequest] = useState(null);
@@ -109,6 +112,8 @@ export default function AdminPage() {
         if (managersRes.success || accountantsRes.success) {
           setUsers([...(managersRes.success ? managersRes.users : []), ...(accountantsRes.success ? accountantsRes.users : [])]);
         }
+        const requestsRes = await api.get('/spare-part-requests');
+        if (requestsRes.success) setSparePartRequests(requestsRes.requests || []);
       } else if (activeTab === 'spare-parts') {
         const res = await api.get('/spare-part-requests');
         if (res.success) setSparePartRequests(res.requests);
@@ -227,6 +232,7 @@ export default function AdminPage() {
   const handleUserSubmit = async (e) => {
     e.preventDefault();
     try {
+      console.log('Submitting new user payload:', userForm);
       let res;
       if (selectedUser) {
         res = await api.put(`/users/${selectedUser._id}`, userForm);
@@ -234,15 +240,33 @@ export default function AdminPage() {
         res = await api.post('/users', userForm);
       }
       if (res.success) {
+        // If backend generated a temporary password, show it in a modal so admin can copy it
+        if (res.tempPassword) {
+          setGeneratedPassword(res.tempPassword);
+          setGeneratedUsername(res.user.username);
+          setTempPasswordModalOpen(true);
+        }
+
         setShowUserModal(false);
         setUserForm({ username: '', password: '', role: 'Driver', fullName: '', phone: '', assignedCar: '' });
         setSelectedUser(null);
         fetchData();
       } else {
-        alert(res.message);
+        console.error('Create user response error:', res);
+        alert(res.message || 'Action failed');
       }
     } catch (err) {
-      console.error(err);
+      console.error('Create user exception:', err);
+    }
+  };
+
+  const handleCopyTempPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPassword);
+      alert('Password copied to clipboard');
+    } catch (err) {
+      console.error('Copy failed', err);
+      alert('Copy failed — please select and copy manually');
     }
   };
 
@@ -549,7 +573,9 @@ export default function AdminPage() {
 
   const getImageUrl = (url) => {
     if (!url) return '';
-    return url.startsWith('http') ? url : `http://localhost:5000${url}`;
+    if (url.startsWith('http')) return url;
+    const origin = (typeof window !== 'undefined') ? window.location.origin : 'http://localhost:5001';
+    return `${origin}${url}`;
   };
 
   return (
@@ -921,8 +947,8 @@ export default function AdminPage() {
 
                     {!selectedUser && (
                       <div className="form-group">
-                        <label className="form-label">Initial Password</label>
-                        <input type="password" className="form-input" required value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} placeholder="Temporary password" />
+                        <label className="form-label">Initial Password (optional)</label>
+                        <input type="password" className="form-input" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} placeholder="Leave blank to auto-generate" />
                       </div>
                     )}
 
@@ -961,6 +987,26 @@ export default function AdminPage() {
 
                     <button type="submit" className="btn btn-primary">{selectedUser ? 'Save Details' : 'Provision User'}</button>
                   </form>
+                </div>
+              )}
+              {tempPasswordModalOpen && (
+                <div className="modal-overlay">
+                  <div className="glass-card modal-content">
+                    <div className="modal-header">
+                      <h3>Account Provisioned</h3>
+                      <button type="button" className="btn-close" onClick={() => setTempPasswordModalOpen(false)}>×</button>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Temporary Password</label>
+                      <p>Temporary password for <strong>{generatedUsername}</strong>:</p>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <div style={{ padding: '8px 12px', background: 'var(--muted)', borderRadius: 6 }}>{generatedPassword}</div>
+                        <button type="button" className="btn btn-secondary" onClick={handleCopyTempPassword}>Copy</button>
+                        <button type="button" className="btn btn-primary" onClick={() => setTempPasswordModalOpen(false)}>Close</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1101,9 +1147,15 @@ export default function AdminPage() {
 
                         {(c.matchStatus === 'Matched' || c.matchStatus === 'Approved') && (
                           <div className="case-next-actions">
-                            <button className="btn btn-accent" onClick={() => handleOpenRequestModal(c)}>
-                              Create Spare Part Request
-                            </button>
+                            {sparePartRequests.some((r) => r.issueCase?._id?.toString() === c._id.toString() || r.issueCase?.toString() === c._id.toString()) ? (
+                              <button className="btn btn-secondary btn-sm" disabled>
+                                Request Created
+                              </button>
+                            ) : (
+                              <button className="btn btn-accent" onClick={() => handleOpenRequestModal(c)}>
+                                Create Spare Part Request
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
